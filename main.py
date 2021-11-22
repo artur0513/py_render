@@ -1,8 +1,8 @@
 from renderer import *
 
 FPS = 60
-WIDTH = 1120
-HEIGHT = 600
+WIDTH = 1280
+HEIGHT = 720
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -22,10 +22,10 @@ font = pygame.font.Font(None, 30)
 camera_pos = (0, 0, 5)
 
 
-nigger = Object("african_head.obj.txt", screen)
+nigger = Object("models/african_head.obj.txt", "models/african_head_diffuse.tga", screen)
 nigger.multiply_coords(1)
-nigger2 = Object("african_head.obj.txt", screen)
-nigger3 = Object("african_head.obj.txt", screen)
+nigger2 = Object("models/african_head.obj.txt", "models/african_head_diffuse.tga", screen)
+nigger3 = Object("models/african_head.obj.txt", "models/african_head_diffuse.tga", screen)
 nigger.rotate((20, 20, 30))
 nigger.move([0, 0, 6])
 nigger2.rotate((10, -30, 10))
@@ -34,14 +34,14 @@ nigger3.rotate((30, 35, 40))
 nigger3.move([-1, -2, 8])
 
 renderer = Renderer(screen)
-draw_triangle(screen, (100, 100, 1), (200, 300, 1), (300, 200, 1), (255, 0, 0), (0, 255, 0), (0, 0, 255), renderer.zbuffer )
-lamp = Light_source([-10, -10, -50], 1, WHITE)
+#draw_triangle(screen, ((100, 100, 1), (200, 300, 1), (300, 200, 1)), (255, 0, 0), (0, 255, 0), (0, 0, 255), renderer.zbuffer )
+lamp = Light_source([-20, -20, -20], 1, WHITE)
 lamp2 = Light_source([-30, 0, -20], 4, RED)
-lamp3 = Light_source([-20, -20, -10], 1, GREEN)
+lamp3 = Light_source([-20, -20, -10], 1, BACKGROUND)
 lamp4 = Light_source([0, 0, -50], 1, WHITE)
-#renderer.add(lamp)
-renderer.add(lamp2)
-renderer.add(lamp3)
+renderer.add(lamp)
+#renderer.add(lamp2)
+#renderer.add(lamp3)
 #renderer.add(lamp4)
 renderer.add(nigger)
 renderer.add(nigger3)

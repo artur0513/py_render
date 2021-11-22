@@ -14,17 +14,14 @@ class Light_source:
 
 
 class Object:
-    def __init__(self, filename, screen):
-        self.vertices, self.faces, self.normals, self.links_to_normals = read_from_file(filename)
+    def __init__(self, filename, texturename, screen):
+        self.vertices, self.faces, self.texture_links, self.texture_points = read_from_file(filename)
         self.world_vertices = copy.deepcopy(self.vertices)
         self.cam_vertices = copy.deepcopy(self.vertices)
         self.screen = screen
+        self.texture = pygame.image.load(texturename)
+        self.texture = pygame.transform.flip(self.texture, False, True)
         self.calculate_normals()
-        #for face in self.faces:
-            #point1 = self.vertices[face[0] - 1]
-            #point2 = self.vertices[face[1] - 1]
-            #point3 = self.vertices[face[2] - 1]
-            # self.normals.append(normal_vector_p(point1, point2, point3))
         self.WIDTH = screen.get_width()
         self.HEIGHT = screen.get_height()
         self.world_pos = [0, 0, 0]
@@ -55,6 +52,14 @@ class Object:
             point1 = self.cam_vertices[face[0] - 1]  # Точки для отрисовки берем в экранных координатах
             point2 = self.cam_vertices[face[1] - 1]
             point3 = self.cam_vertices[face[2] - 1]
+
+            tpoint1 = self.texture_points[self.texture_links[i][0] - 1]
+            tpoint2 = self.texture_points[self.texture_links[i][1] - 1]
+            tpoint3 = self.texture_points[self.texture_links[i][2] - 1]
+            tpoints = [tpoint1, tpoint2, tpoint3]
+
+            points = [point1, point2, point3]
+
             need_to_draw = False
 
             color1 = (0, 0, 0)
@@ -135,11 +140,12 @@ class Object:
                 #    illumination = 0.05
                 #    color = sum_colors(vector_multiply(light.color, illumination), color)
                 #    need_to_draw = True
-            #print("Цвета верщин - ", color1, color2, color3)
+            # print("Цвета верщин - ", color1, color2, color3)
             if need_to_draw or True:
                 self.current_faces_counter += 1
+                colors = [color1, color2, color3]
                 zbuffer = draw_triangle(surface,
-                                        point1, point2, point3, color1, color2, color3, zbuffer)
+                                        points, colors, tpoints, self.texture, zbuffer)
             i += 1
 
         self.screen.blit(surface, (0, 0))
@@ -206,7 +212,7 @@ class Object:
     def calculate_normals(self):
         self.normals = []
         self.links_to_normals = [[0, 0, 0] for i in range(len(self.faces))]
-        for i in range(1, len(self.vertices)+1):
+        for i in range(1, len(self.vertices) + 1):
             normals_sum = (0, 0, 0)
             j = 0
             for face in self.faces:
@@ -227,8 +233,6 @@ class Object:
             normals_sum = vector_div(normals_sum, math.sqrt(scalar(normals_sum, normals_sum)))
             self.normals.append(normals_sum)
 
-
     def multiply_coords(self, koef):
         for i in range(len(self.vertices)):
             self.vertices[i] = vector_multiply(self.vertices[i], koef)
-

@@ -40,7 +40,21 @@ def draw_line(surface, pos1, pos2, color):
             error2 -= 2 * dx
 
 
-def draw_triangle(surface, pos1, pos2, pos3, color1, color2, color3, zbuffer):
+def draw_triangle(surface, points, colors, texture_points, texture, zbuffer):
+    tsizex = texture.get_width() - 1
+    tsizey = texture.get_height() - 1
+
+    color1 = colors[0]
+    color2 = colors[1]
+    color3 = colors[2]
+    pos1 = points[0]
+    pos2 = points[1]
+    pos3 = points[2]
+
+    tpos1 = texture_points[0]
+    tpos2 = texture_points[1]
+    tpos3 = texture_points[2]
+
     if not (pos1[1] == pos2[1] and pos1[1] == pos3[1]):
         HEIGHT = surface.get_height()
         WIDTH = surface.get_width()
@@ -48,12 +62,15 @@ def draw_triangle(surface, pos1, pos2, pos3, color1, color2, color3, zbuffer):
         if pos1[1] > pos2[1]:
             pos1, pos2 = pos2, pos1
             color1, color2 = color2, color1
+            tpos1, tpos2 = tpos2, tpos1
         if pos1[1] > pos3[1]:
             pos1, pos3 = pos3, pos1
             color1, color3 = color3, color1
+            tpos1, tpos3 = tpos3, tpos1
         if pos2[1] > pos3[1]:
             pos2, pos3 = pos3, pos2
             color2, color3 = color3, color2
+            tpos2, tpos3 = tpos3, tpos2
 
         total_height = pos3[1] - pos1[1]
         for y in range(math.ceil(pos1[1]), math.ceil(pos2[1])):
@@ -85,10 +102,16 @@ def draw_triangle(surface, pos1, pos2, pos3, color1, color2, color3, zbuffer):
 
                 Pcolor = vector_sum(colorA, vector_multiply(vector_diff(colorB, colorA), phi))
 
+                mass = barcoords((pos1, pos2, pos3), (i, y))
+                tpoint = decartcoords((tpos1, tpos2, tpos3), mass)
+                Tcolor = texture.get_at((round(tpoint[0] * tsizex), round(tpoint[1] * tsizey)))
+
+                Pcolor = sum_colors(Tcolor, Pcolor)
                 if 0 < y < HEIGHT:
                     if (zbuffer[y * WIDTH + i] == -1 or zbuffer[y * WIDTH + i] > Pz) and Pz > 0:
                         zbuffer[y * WIDTH + i] = Pz
                         gfxdraw.pixel(surface, i, y, Pcolor)
+
         for y in range(math.ceil(pos2[1]), math.ceil(pos3[1])):
 
             segment_height = pos3[1] - pos2[1]
@@ -117,10 +140,11 @@ def draw_triangle(surface, pos1, pos2, pos3, color1, color2, color3, zbuffer):
                     phi = (i - Ax) / (Bx - Ax)
                 Pz = Az + (Bz - Az) * phi
 
-
                 Pcolor = vector_sum(colorA, vector_multiply(vector_diff(colorB, colorA), phi))
-                color_fix(Pcolor)
-
+                mass = barcoords((pos1, pos2, pos3), (i, y))
+                tpoint = decartcoords((tpos1, tpos2, tpos3), mass)
+                Tcolor = texture.get_at((round(tpoint[0] * tsizex), round(tpoint[1] * tsizey)))
+                Pcolor = sum_colors(Tcolor, Pcolor)
 
                 if 0 < y < HEIGHT:
                     if (zbuffer[y * WIDTH + i] == -1 or zbuffer[y * WIDTH + i] > Pz) and Pz > 0:
@@ -143,9 +167,9 @@ def cos_between_vectors(vector1, vector2):
 
 
 def normal_vector_v(vector1, vector2):
-    #x = vector1[1] * vector2[2] - vector1[2] * vector2[1]
-    #y = vector1[2] * vector2[0] - vector1[0] * vector2[2]
-    #z = vector1[0] * vector2[1] - vector1[1] * vector2[0]
+    # x = vector1[1] * vector2[2] - vector1[2] * vector2[1]
+    # y = vector1[2] * vector2[0] - vector1[0] * vector2[2]
+    # z = vector1[0] * vector2[1] - vector1[1] * vector2[0]
     v1_np = np.array(vector1)
     v2_np = np.array(vector2)
     ans = np.cross(v1_np, v2_np)
@@ -190,37 +214,36 @@ def read_from_file(filename):
     file = open(filename, 'r')
     vertices = []
     faces = []
-    normals = []
-    links_to_normals = []
+    texture_links = []
+    texture_points = []
     for line in file:
         if len(line) >= 2:
             line = line.replace("\n", "")
-            if line[len(line) - 1] == " ":
-                line = line.rstrip(" ")
+            line = line.strip()
+
             if line[0] == "v" and line[1] == " ":
                 newline = line.replace("v ", "")
                 vertices.append([- float(x) for x in newline.split(" ")])
-            if line[0] == "v" and line[1] == "n" and line[2] == " ":
-                if line[3] == " ":
-                    newline = line.replace("vn  ", "")
-                else:
-                    newline = line.replace("vn ", "")
-                normals.append([float(x.split("/")[0]) for x in newline.split(" ")])
+
+            if line[0] == "v" and line[1] == "t" and line[2] == " ":
+                newline = line.replace("vt  ", "")
+                texture_points.append([float(x) for x in newline.split(" ")])
+
             if line[0] == "f" and line[1] == " ":
                 line_replaced = line.replace("f ", "")
 
                 if len(line_replaced.split(" ")[0].split("/")) > 1:
                     point1 = int(line_replaced.split(" ")[0].split("/")[0])
-                    normal1 = int(line_replaced.split(" ")[0].split("/")[2])
-
                     point2 = int(line_replaced.split(" ")[1].split("/")[0])
-                    normal2 = int(line_replaced.split(" ")[1].split("/")[2])
-
                     point3 = int(line_replaced.split(" ")[2].split("/")[0])
-                    normal3 = int(line_replaced.split(" ")[2].split("/")[2])
+
+                    texture_point1 = int(line_replaced.split(" ")[0].split("/")[1])
+                    texture_point2 = int(line_replaced.split(" ")[1].split("/")[1])
+                    texture_point3 = int(line_replaced.split(" ")[2].split("/")[1])
 
                     faces.append([point1, point2, point3])
-                    links_to_normals.append([normal1, normal2, normal3])
+                    texture_links.append([texture_point1, texture_point2, texture_point3])
+
                 else:
                     point1 = int(line_replaced.split(" ")[0])
                     point2 = int(line_replaced.split(" ")[1])
@@ -228,7 +251,7 @@ def read_from_file(filename):
                     faces.append([point1, point2, point3])
 
     file.close()
-    return vertices, faces, normals, links_to_normals
+    return vertices, faces, texture_links, texture_points
 
 
 def random_color():
@@ -256,3 +279,29 @@ def matrix_multiply(a, b):
 def color_fix(color):
     for i in range(3):
         color[i] = min(max(color[i], 0), 255)
+
+
+def barcoords(triangle, point):
+    x1 = triangle[0][0]
+    y1 = triangle[0][1]
+    x2 = triangle[1][0]
+    y2 = triangle[1][1]
+    x3 = triangle[2][0]
+    y3 = triangle[2][1]
+    x = point[0]
+    y = point[1]
+
+    m1 = ((y - y3) * (x2 - x3) - (x - x3) * (y2 - y3)) / ((y1 - y3) * (x2 - x3) - (x1 - x3) * (y2 - y3))
+    m2 = ((y - y1) * (x3 - x1) - (x - x1) * (y3 - y1)) / ((y2 - y1) * (x3 - x1) - (x2 - x1) * (y3 - y1))
+    m3 = ((y - y1) * (x2 - x1) - (x - x1) * (y2 - y1)) / ((y3 - y1) * (x2 - x1) - (x3 - x1) * (y2 - y1))
+
+    return [m1, m2, m3]
+
+
+def decartcoords(triangle, mass):
+    moment1 = vector_multiply(triangle[0], mass[0])
+    moment2 = vector_multiply(triangle[1], mass[1])
+    moment3 = vector_multiply(triangle[2], mass[2])
+    point = vector_sum(moment1, moment2)
+    point = vector_sum(point, moment3)
+    return point

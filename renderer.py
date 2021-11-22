@@ -2,7 +2,11 @@ import pygame.image
 
 from object import *
 import time
+import os
 
+import datetime
+
+now = datetime.datetime.now()
 
 class Renderer:
     def __init__(self, screen):
@@ -26,6 +30,22 @@ class Renderer:
 
         self.zbuffer = [-1 for i in range(self.WIDTH * self.HEIGHT)]
 
+        screen_numbers = []
+        i = 1
+        for dirpath, dirnames, filenames in os.walk('screenshots'):
+            filenames = str(filenames)
+            filenames = filenames.replace("['", "")
+            filenames = filenames.replace("']", "")
+            for filename in filenames.split("', '"):
+
+                if filename.find("screenshot") != -1:
+                    filename = filename.replace("screenshot", "")
+                    filename = filename.replace(".png", "")
+                    screen_numbers.append(int(filename))
+        while i in screen_numbers:
+            i += 1
+        self.next_screen_name = "screenshots/screenshot" + str(i) + ".png"
+
     def add(self, target):
         if type(target) == Object:
             self.objects.append(target)
@@ -45,7 +65,7 @@ class Renderer:
         self.draw_time_ms = round((time.time() - start_time) * 10000) / 10
         if self.show_statistics:
             self.draw_statistics()
-        pygame.image.save(self.screen, "screenshot.jpg")
+        pygame.image.save(self.screen, self.next_screen_name)
 
     def update(self):
         for obj in self.objects:
@@ -57,3 +77,6 @@ class Renderer:
 
         text2 = self.font.render("Total faces: " + str(self.total_draw_faces), True, self.color)
         self.screen.blit(text2, (self.stat_x, self.stat_y + text1.get_height()))
+
+        text3 = self.font.render(now.strftime("%d-%m-%Y %H:%M"), True, self.color)
+        self.screen.blit(text3, (self.stat_x, self.stat_y + text1.get_height() + text2.get_height()))
