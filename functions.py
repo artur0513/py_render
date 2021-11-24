@@ -5,41 +5,6 @@ import numpy as np
 from pygame import gfxdraw
 
 
-# draw_line не работает(пока)
-def draw_line(surface, pos1, pos2, color):
-    x0 = round(pos1[0])
-    y0 = round(pos1[1])
-    x1 = round(pos2[0])
-    y1 = round(pos2[1])
-    steep = False
-
-    if abs(x0 - x1) < abs(y0 - y1):
-        x0, y0 = y0, x0
-        x1, y1 = y1, x1
-        steep = True
-    if x0 > x1:
-        x0, x1 = x1, x0
-        y0, y1 = y1, y0
-    dx = x1 - x0
-    dy = y1 - y0
-    derror2 = abs(dy) * 2
-    error2 = 0
-    y = y0
-    for x in range(x0, x1):
-        if steep:
-            surface.set_at((y, x), color)
-        else:
-            surface.set_at((x, y), color)
-        error2 += derror2
-
-        if derror2 > dx:
-            if y1 > y0:
-                y += 1
-            else:
-                y -= 1
-            error2 -= 2 * dx
-
-
 def draw_triangle(surface, points, colors, texture_points, texture, zbuffer):
     tsizex = texture.get_width() - 1
     tsizey = texture.get_height() - 1
@@ -305,3 +270,133 @@ def decartcoords(triangle, mass):
     point = vector_sum(moment1, moment2)
     point = vector_sum(point, moment3)
     return point
+
+
+def draw_triangle2(surface, points, colors, texture_points, texture, zbuffer):
+    tsizex = texture.get_width() - 1
+    tsizey = texture.get_height() - 1
+
+    HEIGHT = surface.get_height()
+    WIDTH = surface.get_width()
+
+    minX = math.floor(min(points[0][0], points[1][0], points[2][0]))
+    maxX = math.ceil(max(points[0][0], points[1][0], points[2][0]))
+
+    minY = math.floor(min(points[0][1], points[1][1], points[2][1]))
+    maxY = math.ceil(max(points[0][1], points[1][1], points[2][1]))
+
+    minX = max(0, minX)
+    maxX = min(WIDTH, maxX)
+
+    minY = max(0, minY)
+    maxY = min(HEIGHT, maxY)
+
+    for x in range(minX, maxX):
+        for y in range(minY, maxY):
+            mass = barcoords(points, (x, y))
+            if mass[0] >= 0 and mass[1] >= 0 and mass[2] >= 0:
+                Pz = decartcoords(points, mass)[2]
+                Pcolor = decartcoords(colors, mass)
+                Tpoint = decartcoords(texture_points, mass)
+                Tcolor = texture.get_at((round(Tpoint[0] * tsizex), round(Tpoint[1] * tsizey)))
+                color = sum_colors(Tcolor, Pcolor)
+                if (zbuffer[y * WIDTH + x] == -1 or zbuffer[y * WIDTH + x] > Pz) and Pz > 0:
+                    zbuffer[y * WIDTH + x] = Pz
+                    gfxdraw.pixel(surface, x, y, color)
+    return zbuffer
+
+
+def illumination_color(point, normal, lights):
+    light_const = 1000
+    color = [0, 0, 0]
+    for light in lights:
+        r = vector_diff(point, light.pos)
+        illumination = cos_between_vectors(normal, r) * light.strength \
+                       / scalar(r, r) * light_const
+        illumination = min(1, illumination)
+        illumination = max(0, illumination)
+        if illumination > 0:
+            color = sum_colors(vector_multiply(light.color, illumination), color)
+
+    return color
+
+
+def draw_triangle3(surface, points, worldpoints, lights, texture_points, texture, normal_map, angle, zbuffer):
+    tsizex = texture.get_width() - 1
+    tsizey = texture.get_height() - 1
+
+    HEIGHT = surface.get_height()
+    WIDTH = surface.get_width()
+
+    minX = math.floor(min(points[0][0], points[1][0], points[2][0]))
+    maxX = math.ceil(max(points[0][0], points[1][0], points[2][0]))
+
+    minY = math.floor(min(points[0][1], points[1][1], points[2][1]))
+    maxY = math.ceil(max(points[0][1], points[1][1], points[2][1]))
+
+    for x in range(minX, maxX):
+        for y in range(minY, maxY):
+            mass = barcoords(points, (x, y))
+            if mass[0] >= 0 and mass[1] >= 0 and mass[2] >= 0:
+                Pz = decartcoords(points, mass)[2]
+                Tpoint = decartcoords(texture_points, mass)
+                Normal = normal_map.get_at((round(Tpoint[0] * tsizex), round(Tpoint[1] * tsizey)))
+                Normal = vector_diff(Normal, (127, 127, 127))
+                Normal = rotate_vector(Normal, angle)
+
+                Pcolor = illumination_color(decartcoords(worldpoints, mass), Normal, lights)
+
+                Tcolor = texture.get_at((round(Tpoint[0] * tsizex), round(Tpoint[1] * tsizey)))
+                color = sum_colors(Pcolor, Tcolor)
+                if (zbuffer[y * WIDTH + x] == -1 or zbuffer[y * WIDTH + x] > Pz) and Pz > 0:
+                    zbuffer[y * WIDTH + x] = Pz
+                    gfxdraw.pixel(surface, x, y, color)
+    return zbuffer
+
+
+def rotate_vector(vector, angle):  # Угол в градусах, функция сама переводит в радианы
+    angle_x = angle[0] * math.pi / 180
+    angle_y = angle[1] * math.pi / 180
+    angle_z = angle[2] * math.pi / 180
+    rotate_matrix_x = [[1, 0, 0], [0, math.cos(angle_x), -math.sin(angle_x)],
+                       [0, math.sin(angle_x), math.cos(angle_x)]]
+    rotate_matrix_y = [[math.cos(angle_y), 0, math.sin(angle_y)], [0, 1, 0],
+                       [-math.sin(angle_y), 0, math.cos(angle_y)]]
+    rotate_matrix_z = [[math.cos(angle_z), -math.sin(angle_z), 0], [math.sin(angle_z), math.cos(angle_z), 0],
+                       [0, 0, 1]]
+    new_vector = matrix_multiply(rotate_matrix_x, vector)
+    new_vector = matrix_multiply(rotate_matrix_y, new_vector)
+    new_vector = matrix_multiply(rotate_matrix_z, new_vector)
+    return list(new_vector)
+
+
+def draw_triangle4(surface, points, texture_points, texture, zbuffer):
+    tsizex = texture.get_width() - 1
+    tsizey = texture.get_height() - 1
+
+    HEIGHT = surface.get_height()
+    WIDTH = surface.get_width()
+
+    minX = math.floor(min(points[0][0], points[1][0], points[2][0]))
+    maxX = math.ceil(max(points[0][0], points[1][0], points[2][0]))
+
+    minY = math.floor(min(points[0][1], points[1][1], points[2][1]))
+    maxY = math.ceil(max(points[0][1], points[1][1], points[2][1]))
+
+    minX = max(0, minX)
+    maxX = min(WIDTH, maxX)
+
+    minY = max(0, minY)
+    maxY = min(HEIGHT, maxY)
+
+    for x in range(minX, maxX):
+        for y in range(minY, maxY):
+            mass = barcoords(points, (x, y))
+            if mass[0] >= 0 and mass[1] >= 0 and mass[2] >= 0:
+                Pz = decartcoords(points, mass)[2]
+                Tpoint = decartcoords(texture_points, mass)
+                Tcolor = texture.get_at((round(Tpoint[0] * tsizex), round(Tpoint[1] * tsizey)))
+                if (zbuffer[y * WIDTH + x] == -1 or zbuffer[y * WIDTH + x] > Pz) and Pz > 0:
+                    zbuffer[y * WIDTH + x] = Pz
+                    gfxdraw.pixel(surface, x, y, Tcolor)
+    return zbuffer

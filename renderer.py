@@ -16,7 +16,7 @@ class Renderer:
         self.lights = []
         self.WIDTH = screen.get_width()
         self.HEIGHT = screen.get_height()
-        self.fov = 70
+        self.fov = 30
 
         self.show_statistics = True
         self.total_draw_faces = 0
@@ -78,5 +78,8 @@ class Renderer:
         text2 = self.font.render("Total faces: " + str(self.total_draw_faces), True, self.color)
         self.screen.blit(text2, (self.stat_x, self.stat_y + text1.get_height()))
 
-        text3 = self.font.render(now.strftime("%d-%m-%Y %H:%M"), True, self.color)
+        text3 = self.font.render(str(self.screen.get_width()) + "x" + str(self.screen.get_height()), True, self.color)
         self.screen.blit(text3, (self.stat_x, self.stat_y + text1.get_height() + text2.get_height()))
+
+        text4 = self.font.render(now.strftime("%d-%m-%Y %H:%M"), True, self.color)
+        self.screen.blit(text4, (self.stat_x, self.stat_y + text1.get_height() + text2.get_height() + text3.get_height()))

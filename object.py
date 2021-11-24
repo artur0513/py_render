@@ -25,6 +25,13 @@ class Object:
         self.WIDTH = screen.get_width()
         self.HEIGHT = screen.get_height()
         self.world_pos = [0, 0, 0]
+        self.angle = [0, 0, 0]
+        self.use_normal_map = False
+
+    def add_normal_map(self, normalname):
+        self.use_normal_map = True
+        self.normal_map = pygame.image.load(normalname)
+        self.normal_map = pygame.transform.flip(self.normal_map, False, True)
 
     def get_faces_count(self):
         return len(self.faces)
@@ -52,100 +59,34 @@ class Object:
             point1 = self.cam_vertices[face[0] - 1]  # Точки для отрисовки берем в экранных координатах
             point2 = self.cam_vertices[face[1] - 1]
             point3 = self.cam_vertices[face[2] - 1]
+            points = [point1, point2, point3]
 
             tpoint1 = self.texture_points[self.texture_links[i][0] - 1]
             tpoint2 = self.texture_points[self.texture_links[i][1] - 1]
             tpoint3 = self.texture_points[self.texture_links[i][2] - 1]
             tpoints = [tpoint1, tpoint2, tpoint3]
 
-            points = [point1, point2, point3]
+            wpoint1 = self.vertices[face[0] - 1]
+            wpoint2 = self.vertices[face[1] - 1]
+            wpoint3 = self.vertices[face[2] - 1]
+            wpoints = [wpoint1, wpoint2, wpoint3]
 
-            need_to_draw = False
+            if not self.use_normal_map:
+                color1 = illumination_color(self.vertices[face[0] - 1], self.normals[face[0] - 1], lights)
+                color2 = illumination_color(self.vertices[face[1] - 1], self.normals[face[1] - 1], lights)
+                color3 = illumination_color(self.vertices[face[2] - 1], self.normals[face[2] - 1], lights)
 
-            color1 = (0, 0, 0)
-            color2 = (0, 0, 0)
-            color3 = (0, 0, 0)
-
-            for light in lights:
-                """
-                v = self.vertices[face[0] - 1]  # А вот тени считаем в исходных, мировых
-                v = vector_div(v, math.sqrt(scalar(v, v)))
-                n1 = self.normals[self.links_to_normals[i][0] - 1]
-                n = vector_div(n1, math.sqrt(scalar(n1, n1)))
-                l = vector_diff(self.vertices[face[0] - 1], light.pos)
-                l = vector_div(l, math.sqrt(scalar(l, l)))
-                h = vector_sum(l, v)
-                h = vector_div(h, math.sqrt(scalar(h, h)))
-                illumination1 = 1 - scalar(l, h) ** 1.5
-                l = vector_diff(self.vertices[face[0] - 1], light.pos)
-                illumination1 *= scalar(l, l)/light_const
-
-                v = self.vertices[face[1] - 1]  # А вот тени считаем в исходных, мировых
-                v = vector_div(v, math.sqrt(scalar(v, v)))
-                n1 = self.normals[self.links_to_normals[i][1] - 1]
-                n = vector_div(n1, math.sqrt(scalar(n1, n1)))
-                l = vector_diff(self.vertices[face[1] - 1], light.pos)
-                l = vector_div(l, math.sqrt(scalar(l, l)))
-                h = vector_sum(l, v)
-                h = vector_div(h, math.sqrt(scalar(h, h)))
-                illumination2 = 1 - scalar(l, h) ** 1.5
-                l = vector_diff(self.vertices[face[1] - 1], light.pos)
-                illumination2 *= scalar(l, l)/light_const
-
-                v = self.vertices[face[2] - 1]  # А вот тени считаем в исходных, мировых
-                v = vector_div(v, math.sqrt(scalar(v, v)))
-                n1 = self.normals[self.links_to_normals[i][2] - 1]
-                n = vector_div(n1, math.sqrt(scalar(n1, n1)))
-                l = vector_diff(self.vertices[face[2] - 1], light.pos)
-                l = vector_div(l, math.sqrt(scalar(l, l)))
-                h = vector_sum(l, v)
-                h = vector_div(h, math.sqrt(scalar(h, h)))
-                illumination3 = 1 - scalar(l, h) ** 1.5
-                l = vector_diff(self.vertices[face[2] - 1], light.pos)
-                illumination3 *= scalar(l, l)/light_const
-                """
-                r = vector_diff(self.vertices[face[0] - 1], light.pos)
-                illumination1 = cos_between_vectors(self.normals[face[0] - 1], r) * light.strength \
-                                / scalar(r, r) * light_const
-
-                r = vector_diff(self.vertices[face[1] - 1], light.pos)
-                illumination2 = cos_between_vectors(self.normals[face[1] - 1], r) * light.strength \
-                                / scalar(r, r) * light_const
-
-                r = vector_diff(self.vertices[face[2] - 1], light.pos)
-                illumination3 = cos_between_vectors(self.normals[face[2] - 1], r) * light.strength \
-                                / scalar(r, r) * light_const
-
-                illumination1 = min(1, illumination1)
-                illumination2 = min(1, illumination2)
-                illumination3 = min(1, illumination3)
-
-                illumination1 = max(0, illumination1)
-                illumination2 = max(0, illumination2)
-                illumination3 = max(0, illumination3)
-
-                if illumination1 > 0:
-                    color1 = sum_colors(vector_multiply(light.color, illumination1), color1)
-                    need_to_draw = True
-
-                if illumination2 > 0:
-                    color2 = sum_colors(vector_multiply(light.color, illumination2), color2)
-                    need_to_draw = True
-
-                if illumination3 > 0:
-                    color3 = sum_colors(vector_multiply(light.color, illumination3), color3)
-                    need_to_draw = True
-
-                # if illumination < 0:
-                #    illumination = 0.05
-                #    color = sum_colors(vector_multiply(light.color, illumination), color)
-                #    need_to_draw = True
-            # print("Цвета верщин - ", color1, color2, color3)
-            if need_to_draw or True:
                 self.current_faces_counter += 1
                 colors = [color1, color2, color3]
-                zbuffer = draw_triangle(surface,
-                                        points, colors, tpoints, self.texture, zbuffer)
+                zbuffer = draw_triangle2(surface,
+                                         points, colors, tpoints, self.texture, zbuffer)
+
+
+            if self.use_normal_map:
+                self.current_faces_counter += 1
+                zbuffer = draw_triangle3(surface,
+                                         points, wpoints, lights, tpoints, self.texture, self.normal_map, self.angle, zbuffer)
+                #zbuffer = draw_triangle4(surface, points, tpoints, self.normal_map, zbuffer)
             i += 1
 
         self.screen.blit(surface, (0, 0))
@@ -174,6 +115,7 @@ class Object:
             i += 1
 
     def rotate(self, angle):  # Угол в градусах, функция сама переводит в радианы
+        self.angle = angle
         angle_x = angle[0] * math.pi / 180
         angle_y = angle[1] * math.pi / 180
         angle_z = angle[2] * math.pi / 180

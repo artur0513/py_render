@@ -23,10 +23,11 @@ camera_pos = (0, 0, 5)
 
 
 nigger = Object("models/african_head.obj.txt", "models/african_head_diffuse.tga", screen)
+nigger.add_normal_map("models/african_head_nm.tga")
 nigger.multiply_coords(1)
 nigger2 = Object("models/african_head.obj.txt", "models/african_head_diffuse.tga", screen)
 nigger3 = Object("models/african_head.obj.txt", "models/african_head_diffuse.tga", screen)
-nigger.rotate((20, 20, 30))
+nigger.rotate((10, 10, 15))
 nigger.move([0, 0, 6])
 nigger2.rotate((10, -30, 10))
 nigger2.move([1, 2, 9])
