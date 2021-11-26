@@ -16,7 +16,7 @@ class Renderer:
         self.lights = []
         self.WIDTH = screen.get_width()
         self.HEIGHT = screen.get_height()
-        self.fov = 30
+        self.fov = 45
 
         self.show_statistics = True
         self.total_draw_faces = 0
@@ -58,7 +58,9 @@ class Renderer:
         self.draw_time_ms = 0
 
         start_time = time.time()
+        self.screen.fill((0, 0, 0))
         for obj in self.objects:
+            obj.recalculate_coords(self.fov)
             self.zbuffer = obj.draw(self.zbuffer, self.lights)
             self.total_draw_faces += obj.current_faces_counter
         self.zbuffer = [-1 for i in range(self.WIDTH * self.HEIGHT)]
@@ -66,10 +68,6 @@ class Renderer:
         if self.show_statistics:
             self.draw_statistics()
         pygame.image.save(self.screen, self.next_screen_name)
-
-    def update(self):
-        for obj in self.objects:
-            obj.recalculate_coords(self.fov)
 
     def draw_statistics(self):
         text1 = self.font.render(str(self.draw_time_ms) + " ms per frame", True, self.color)

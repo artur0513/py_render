@@ -309,16 +309,19 @@ def draw_triangle2(surface, points, colors, texture_points, texture, zbuffer):
 def illumination_color(point, normal, lights):
     light_const = 1000
     color = [0, 0, 0]
-    for light in lights:
-        r = vector_diff(point, light.pos)
-        illumination = cos_between_vectors(normal, r) * light.strength \
-                       / scalar(r, r) * light_const
-        illumination = min(1, illumination)
-        illumination = max(0, illumination)
-        if illumination > 0:
-            color = sum_colors(vector_multiply(light.color, illumination), color)
+    n = normalize(normal)
+    v = normalize(point)
 
-    return color
+    for light in lights:
+        l = normalize(vector_diff(point, light.pos))
+        r = vector_diff(vector_multiply(n, 2*scalar(n, v)), v)
+        illumination = max(0, scalar(r, l))**30
+        print(illumination)
+
+    illumination += max(0, scalar(l, n)/2)
+    illumination = max(0.05, illumination)
+
+    return illumination
 
 
 def draw_triangle3(surface, points, worldpoints, lights, texture_points, texture, normal_map, angle, zbuffer):
@@ -334,6 +337,12 @@ def draw_triangle3(surface, points, worldpoints, lights, texture_points, texture
     minY = math.floor(min(points[0][1], points[1][1], points[2][1]))
     maxY = math.ceil(max(points[0][1], points[1][1], points[2][1]))
 
+    minX = max(0, minX)
+    maxX = min(WIDTH, maxX)
+
+    minY = max(0, minY)
+    maxY = min(HEIGHT, maxY)
+
     for x in range(minX, maxX):
         for y in range(minY, maxY):
             mass = barcoords(points, (x, y))
@@ -347,10 +356,13 @@ def draw_triangle3(surface, points, worldpoints, lights, texture_points, texture
                 Pcolor = illumination_color(decartcoords(worldpoints, mass), Normal, lights)
 
                 Tcolor = texture.get_at((round(Tpoint[0] * tsizex), round(Tpoint[1] * tsizey)))
-                color = sum_colors(Pcolor, Tcolor)
+                color = [Tcolor[0]*Pcolor, Tcolor[1]*Pcolor, Tcolor[2]*Pcolor]
+                color_fix(color)
+
                 if (zbuffer[y * WIDTH + x] == -1 or zbuffer[y * WIDTH + x] > Pz) and Pz > 0:
                     zbuffer[y * WIDTH + x] = Pz
                     gfxdraw.pixel(surface, x, y, color)
+
     return zbuffer
 
 
@@ -400,3 +412,7 @@ def draw_triangle4(surface, points, texture_points, texture, zbuffer):
                     zbuffer[y * WIDTH + x] = Pz
                     gfxdraw.pixel(surface, x, y, Tcolor)
     return zbuffer
+
+
+def normalize(vector):
+    return vector_div(vector, math.sqrt(scalar(vector, vector)))

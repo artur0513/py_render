@@ -16,8 +16,12 @@ class Light_source:
 class Object:
     def __init__(self, filename, texturename, screen):
         self.vertices, self.faces, self.texture_links, self.texture_points = read_from_file(filename)
+
         self.world_vertices = copy.deepcopy(self.vertices)
         self.cam_vertices = copy.deepcopy(self.vertices)
+
+        self.vertices = tuple(self.vertices)
+
         self.screen = screen
         self.texture = pygame.image.load(texturename)
         self.texture = pygame.transform.flip(self.texture, False, True)
@@ -66,9 +70,10 @@ class Object:
             tpoint3 = self.texture_points[self.texture_links[i][2] - 1]
             tpoints = [tpoint1, tpoint2, tpoint3]
 
-            wpoint1 = self.vertices[face[0] - 1]
-            wpoint2 = self.vertices[face[1] - 1]
-            wpoint3 = self.vertices[face[2] - 1]
+            print(self.vertices[face[0] - 1], self.world_vertices[face[0] - 1])
+            wpoint1 = self.world_vertices[face[0] - 1]
+            wpoint2 = self.world_vertices[face[1] - 1]
+            wpoint3 = self.world_vertices[face[2] - 1]
             wpoints = [wpoint1, wpoint2, wpoint3]
 
             if not self.use_normal_map:
@@ -80,7 +85,6 @@ class Object:
                 colors = [color1, color2, color3]
                 zbuffer = draw_triangle2(surface,
                                          points, colors, tpoints, self.texture, zbuffer)
-
 
             if self.use_normal_map:
                 self.current_faces_counter += 1
@@ -114,6 +118,10 @@ class Object:
             self.cam_vertices[i][2] = new_coords[2] / new_coords[3] * 10000
             i += 1
 
+    def set_all(self, world_pos, angle):
+        print(3)
+
+
     def rotate(self, angle):  # Угол в градусах, функция сама переводит в радианы
         self.angle = angle
         angle_x = angle[0] * math.pi / 180
@@ -131,8 +139,8 @@ class Object:
             new_coords1 = matrix_multiply(rotate_matrix_x, coords)
             new_coords2 = matrix_multiply(rotate_matrix_y, new_coords1)
             new_coords = matrix_multiply(rotate_matrix_z, new_coords2)
-            self.vertices[i] = list(new_coords)
-            self.world_vertices[i] = vector_sum(self.vertices[i], self.world_pos)
+            #self.vertices[i] = list(new_coords)
+            self.world_vertices[i] = vector_sum(new_coords, self.world_pos)
             i += 1
 
         i = 0
